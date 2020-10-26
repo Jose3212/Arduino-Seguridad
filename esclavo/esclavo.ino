@@ -6,7 +6,6 @@
 */
 
 #include <SdFat.h>
-SdFat SD;
 #include <Time.h> //para poner títulos a las fotos según la fecha y hora
 #include <Wire.h>
 #include <Adafruit_VC0706.h>
@@ -20,6 +19,7 @@ SoftwareSerial cameraconnection = SoftwareSerial(2, 3);
 NewSoftSerial cameraconnection = NewSoftSerial(2, 3);
 #endif
 Adafruit_VC0706 cam = Adafruit_VC0706(&cameraconnection);
+SdFat SD;
 
 void setup() {
 #if !defined(SOFTWARE_SPI)
@@ -35,14 +35,14 @@ void setup() {
 
   if (!SD.begin(chipSelect)) {
     // Serial.println("No se reconoce modulo SD o la tarjeta. Abortamos programa.");
-    EstablecerColor(255, 0, 0);
+    EstablecerRojo();
     return;
   }
   //else
   //Serial.println("[OK] SD");
 
   if (!cam.begin()) {
-    EstablecerColor(0, 0, 255);
+    EstablecerAzul();
 
     // Serial.println("No se reconoce la camara. Abortamos programa.");
     return;
@@ -56,12 +56,12 @@ void setup() {
   Wire.onReceive(eventito); // register event
 
   setTime(19, 58, 00, 6, 11, 2014);
-  //Serial.print("Fecha y hora del sistema configurada por defecto");
-  //dameHora();
 
+  pinMode(8, OUTPUT);
 
   Serial.println("Arduino esclavo configurado correctamente");
 }
+
 byte foto = 0;
 byte fotosPorLlamada = 1;
 void loop() {
@@ -157,88 +157,103 @@ void tomarFoto() {
 
   if (! cam.takePicture()) {
     Serial.println("No se ha podido tomar la foto.");
+    cam.resumeVideo();
+    return;
   }
-  else {
-    Serial.println("Foto tomada!");
 
-    char filename[19];
-    time_t t = now();
-    //año
-    int aux = year(t);
-    filename[0] = aux / 1000 + 48;
-    filename[1] = (aux % 1000);
-    filename[2] = filename[1] % 100;
-    filename[3] = filename[2] % 10 + 48;
-    filename[2] = filename[2] / 10 + 48;
-    filename[1] = filename[1] / 100 + 48;
-    //mes
-    aux = month(t);
-    filename[4] = aux / 10 + 48;
-    filename[5] = aux % 10 + 48;
-    //dia
-    aux = day(t);
-    filename[6] = aux / 10 + 48;
-    filename[7] = aux % 10 + 48;
-    //hora
-    aux = hour(t);
-    filename[8] = aux / 10 + 48;
-    filename[9] = aux % 10 + 48;
-    //minuto
-    aux = minute(t);
-    filename[10] = aux / 10 + 48;
-    filename[11] = aux % 10 + 48;
-    //segundo
-    aux = second(t);
-    filename[12] = aux / 10 + 48;
-    filename[13] = aux % 10 + 48;
-    //extension
-    filename[14] = '.'; filename[15] = 'J'; filename[16] = 'P'; filename[17] = 'G'; filename[18] = '\0';
+  Serial.println("Foto tomada!");
 
-    File imgFile = SD.open(filename, FILE_WRITE);
+  char filename[19];
+  time_t t = now();
+  //año
+  int aux = year(t);
+  filename[0] = aux / 1000 + 48;
+  filename[1] = (aux % 1000);
+  filename[2] = filename[1] % 100;
+  filename[3] = filename[2] % 10 + 48;
+  filename[2] = filename[2] / 10 + 48;
+  filename[1] = filename[1] / 100 + 48;
+  //mes
+  aux = month(t);
+  filename[4] = aux / 10 + 48;
+  filename[5] = aux % 10 + 48;
+  //dia
+  aux = day(t);
+  filename[6] = aux / 10 + 48;
+  filename[7] = aux % 10 + 48;
+  //hora
+  aux = hour(t);
+  filename[8] = aux / 10 + 48;
+  filename[9] = aux % 10 + 48;
+  //minuto
+  aux = minute(t);
+  filename[10] = aux / 10 + 48;
+  filename[11] = aux % 10 + 48;
+  //segundo
+  aux = second(t);
+  filename[12] = aux / 10 + 48;
+  filename[13] = aux % 10 + 48;
+  //extension
+  filename[14] = '.'; filename[15] = 'J'; filename[16] = 'P'; filename[17] = 'G'; filename[18] = '\0';
 
-    // Tamaño de las imagenes(frame) tomadas
-    uint16_t jpglen = cam.frameLength();
-    //Serial.print("Cargando ");
-    //Serial.print(jpglen, DEC);
-    //Serial.print(" byte imagen.");
-    EstablecerColor(0, 255, 0);
-    //int32_t time = millis();
-    pinMode(8, OUTPUT);
-    // Lectura de todos los datos
-    byte wCount = 0; // Para contar el numero de escrituras
-    while (jpglen > 0) {
-      // Lectura de  32 bytes en un pulso;
-      uint8_t *buffer;
-      uint8_t bytesToRead = min(32, jpglen); // Cambia 32 a 64
-      buffer = cam.readPicture(bytesToRead);
-      imgFile.write(buffer, bytesToRead);
-      if (++wCount >= 64) {
-        //Serial.print('.');
-        wCount = 0;
-      }
-      jpglen -= bytesToRead;
+  File imgFile = SD.open(filename, FILE_WRITE);
+
+  // Tamaño de las imagenes(frame) tomadas
+  uint16_t jpglen = cam.frameLength();
+  //Serial.print("Cargando ");
+  //Serial.print(jpglen, DEC);
+  //Serial.print(" byte imagen.");
+  EstablecerVerde();
+  //int32_t time = millis();
+
+  // Lectura de todos los datos
+  byte wCount = 0; // Para contar el numero de escrituras
+  while (jpglen > 0) {
+    // Lectura de  32 bytes en un pulso;
+    uint8_t *buffer;
+    uint8_t bytesToRead = min(32, jpglen); // Cambia 32 a 64
+    buffer = cam.readPicture(bytesToRead);
+    imgFile.write(buffer, bytesToRead);
+    if (++wCount >= 64) {
+      //Serial.print('.');
+      wCount = 0;
     }
-    imgFile.close();
-    //time = millis() - time;
-    EstablecerColor(0, 0, 0);
-
-
-    Serial.println("Hecho!");
-    Serial.print("Imagen ");
-    Serial.print(filename);
-    Serial.println(" creada ");
-    //Serial.print(time);
-    //Serial.println(" ms");
+    jpglen -= bytesToRead;
   }
+  imgFile.close();
+  //time = millis() - time;
+  EstablecerBlanco();
+
+
+  Serial.println("Hecho!");
+  Serial.print("Imagen ");
+  Serial.print(filename);
+  Serial.println(" creada ");
+  //Serial.print(time);
+  //Serial.println(" ms");
+
   //Necesita para crear nueva imagen
   cam.resumeVideo();
+}
+
+void EstablecerRojo() {
+  EstablecerColor(255, 0, 0);
+}
+
+void EstablecerVerde() {
+  EstablecerColor(0, 255, 0);
+}
+
+void EstablecerAzul() {
+  EstablecerColor(0, 0, 255);
+}
+
+void EstablecerBlanco() {
+  EstablecerColor(0, 0, 0);
 }
 
 void EstablecerColor(int R, int G, int B) {
   analogWrite(7, 255 - R);
   analogWrite(6, 255 - G);
   analogWrite(5, 255 - B);
-
 }
-
-
